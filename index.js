@@ -20,11 +20,9 @@ app.use(cors({
 
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-console.log(CLIENT_ID)
 const client = new OAuth2Client(CLIENT_ID);
 
 app.post('/api/auth/google', async (req, res) => {
-    console.log(req.body)
     const { token } = req.body; // The token you receive from the frontend
     try {
         const ticket = await client.verifyIdToken({
@@ -34,7 +32,8 @@ app.post('/api/auth/google', async (req, res) => {
         const payload = ticket.getPayload();
         const user = {
             userEmail: payload.email,
-            userName: payload.name
+            userName: payload.name,
+            userPicture: payload.picture
         }
         const userJwt = jwt.sign({
             userEmail: payload.email,
@@ -56,6 +55,14 @@ app.post('/api/auth/google', async (req, res) => {
         console.error('Error verifying Google token:', error);
         res.status(401).send('Invalid authentication token');
     }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    // If using JWT stored in HttpOnly cookies
+    res.clearCookie('token');
+    // Any other session or token invalidation logic here
+
+    res.status(200).json({ message: 'Logged out successfully' });
 });
 
 
