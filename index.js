@@ -9,17 +9,22 @@ import cookieParser from 'cookie-parser';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 8080;
 
 app.use(express.json()); 
-app.use(cors()); // Enable CORS for all routes
-app.use(cookieParser());
+app.use(cors({
+    origin: 'https://localhost:3000', // Specify the origin of the requests you want to allow
+    credentials: true, // Set to true to allow cookies to be shared across origins
+  }));
+  app.use(cookieParser());
 
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+console.log(CLIENT_ID)
 const client = new OAuth2Client(CLIENT_ID);
 
 app.post('/api/auth/google', async (req, res) => {
+    console.log(req.body)
     const { token } = req.body; // The token you receive from the frontend
     try {
         const ticket = await client.verifyIdToken({
@@ -27,8 +32,14 @@ app.post('/api/auth/google', async (req, res) => {
             audience: CLIENT_ID,
         });
         const payload = ticket.getPayload();
+        const user = {
+            userEmail: payload.email,
+            userName: payload.name
+        }
         const userJwt = jwt.sign({
-            email: payload.email,
+            userEmail: payload.email,
+            userName: payload.name
+
         }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('token', userJwt, {
@@ -37,7 +48,10 @@ app.post('/api/auth/google', async (req, res) => {
             sameSite: 'strict',
         });
 
-        res.status(200).send('Authentication successful');
+        res.status(200).json({
+            message: 'Authentication successful',
+            user: user 
+        });
     } catch (error) {
         console.error('Error verifying Google token:', error);
         res.status(401).send('Invalid authentication token');
