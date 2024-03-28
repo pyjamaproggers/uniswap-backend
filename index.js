@@ -9,6 +9,13 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
+import admin from 'firebase-admin';
+import serviceAccount from "./firebase-credentials.json"; 
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 dotenv.config();
 
 const app = express();
@@ -169,6 +176,23 @@ app.post('/api/items', authenticateToken, async (req, res) => {
             { userEmail: req.user.userEmail },
             { $push: { itemsPosted: itemId } } // Adds the item ID to the itemsPosted array
         );
+
+        // Now send a push notification
+        const message = {
+            notification: {
+                title: 'New Item Posted',
+                body: `${itemName} is now available!`
+            },
+            token: req.user.fcmToken // assuming you've stored the FCM token in your user document
+        };
+
+        admin.messaging().send(message)
+            .then((response) => {
+                console.log('Successfully sent message:', response);
+            })
+            .catch((error) => {
+                console.log('Error sending message:', error);
+            });
 
         res.status(201).json({ message: "Item successfully posted", item });
     } catch (error) {
