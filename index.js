@@ -173,25 +173,32 @@ app.get('/api/user/items', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/user/favorites', authenticateToken, async (req, res) => {
+app.post('/api/user/favorites', authenticateToken, async (req, res) => {
+  const { itemId } = req.body;
+  const userEmail = req.user.userEmail;
+
   try {
-      const userEmail = req.user.userEmail;
-      const favoritesCollection = mongoclient.db("Uniswap").collection("Favorites");
-      const favoriteItemsIds = await favoritesCollection.find({ userEmail }).toArray(); // This might return IDs or full items based on your schema
+      const usersCollection = mongoclient.db("Uniswap").collection("Users");
       
-      const itemsCollection = mongoclient.db("Uniswap").collection("Items");
-      const favoriteItems = [];
-      for (const item of favoriteItemsIds) {
-          const itemDetail = await itemsCollection.findOne({ _id: item.itemId });
-          favoriteItems.push(itemDetail);
+      // Check if the item is already in the user's favorites
+      const user = await usersCollection.findOne({ userEmail });
+      const isFavorite = user.favouriteItems.includes(itemId);
+
+      if (isFavorite) {
+          // Remove item from favorites
+          await usersCollection.updateOne({ userEmail }, { $pull: { favouriteItems: itemId } });
+      } else {
+          // Add item to favorites
+          await usersCollection.updateOne({ userEmail }, { $addToSet: { favouriteItems: itemId } }); // $addToSet avoids duplicates
       }
-      
-      res.status(200).json(favoriteItems);
+
+      res.status(200).json({ message: isFavorite ? 'Item removed from favorites' : 'Item added to favorites' });
   } catch (error) {
-      console.error("Error fetching user's favorite items:", error);
-      res.status(500).json({ message: "Failed to fetch user's favorite items" });
+      console.error("Error updating user's favorite items:", error);
+      res.status(500).json({ message: "Failed to update favorite items" });
   }
 });
+
 
 
 
