@@ -177,6 +177,24 @@ app.post('/api/items', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/user/token', authenticateToken, async (req, res) => {
+    const { token: fcmToken } = req.body;
+    const userEmail = req.user.userEmail;
+    console.log("hi there")
+    try {
+        const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        await usersCollection.updateOne(
+            { userEmail },
+            { $set: { fcmToken } }
+        );
+        res.status(200).json({ message: "FCM token updated successfully" });
+    } catch (error) {
+        console.error("Error updating FCM token:", error);
+        res.status(500).json({ message: "Failed to update FCM token" });
+    }
+});
+
+
 
 app.get('/api/user/items', authenticateToken, async (req, res) => {
     try {
@@ -275,8 +293,6 @@ app.patch('/api/items/:itemId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Failed to update item" });
     }
 });
-
-
 
 
 
