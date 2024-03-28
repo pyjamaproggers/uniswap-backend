@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from 'uuid';
-
+import { ObjectId } from 'mongodb';
 dotenv.config();
 
 const app = express();
@@ -60,6 +60,24 @@ app.get('/api/upload', authenticateToken, async (req, res) => {
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(CLIENT_ID);
+
+// Adjusted to handle POST requests for image uploads
+app.post('/api/upload', authenticateToken, async (req, res) => {
+    const key = `uploads/${req.user.userEmail}/${uuidv4()}`;
+    const bucketName = process.env.AWS_BUCKET_NAME;
+    const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+    });
+
+    try {
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        res.json({ url, key });
+    } catch (err) {
+        console.error("Error creating presigned URL", err);
+        res.status(500).json({ message: "Error generating presigned URL" });
+    }
+});
 
 
 
@@ -201,7 +219,6 @@ app.post('/api/user/favorites', authenticateToken, async (req, res) => {
 
 app.get('/api/user/favorites', authenticateToken, async (req, res) => {
     const userEmail = req.user.userEmail;
-    console.log("Hi")
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
 
@@ -212,12 +229,50 @@ app.get('/api/user/favorites', authenticateToken, async (req, res) => {
             // If no user is found, respond accordingly
             return res.status(404).json({ message: "User not found" });
         }
-        console.log(user.favouriteItems)
         // Respond with the favouriteItems array or an empty array if none exists
         res.json(user.favouriteItems || []);
     } catch (error) {
         console.error("Error retrieving user's favorite items:", error);
         res.status(500).json({ message: "Failed to retrieve favorite items" });
+    }
+});
+
+app.patch('/api/items/:itemId', authenticateToken, async (req, res) => {
+    const { itemId } = req.params; // Get the item ID from the request URL
+    const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
+    const userEmail = req.user.userEmail; // Get the user's email from the authenticated user object
+
+    try {
+        const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+
+        // First, verify that the item belongs to the authenticated user
+        const item = await itemsCollection.findOne({ _id: new ObjectId(itemId) });
+        if (!item) {
+            console.log("not found")
+            return res.status(404).json({ message: "Item not found" });
+        }
+        if (item.userEmail !== userEmail) {
+            // Prevent users from updating items that do not belong to them
+            return res.status(403).json({ message: "You do not have permission to update this item" });
+        }
+
+        // Perform the update operation
+        const updatedItem = {
+            ...(itemName && { itemName }),
+            ...(itemDescription && { itemDescription }),
+            ...(itemPrice && { itemPrice }),
+            ...(itemCategory && { itemCategory }),
+            ...(itemPicture && { itemPicture }),
+            ...(contactNumber && { contactNumber }),
+            ...(live && { live }),
+        };
+
+        await itemsCollection.updateOne({ _id: new ObjectId(itemId) }, { $set: updatedItem });
+
+        res.status(200).json({ message: "Item updated successfully" });
+    } catch (error) {
+        console.error("Error updating item:", error);
+        res.status(500).json({ message: "Failed to update item" });
     }
 });
 
