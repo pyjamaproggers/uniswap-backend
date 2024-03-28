@@ -74,6 +74,7 @@ app.post('/api/auth/google', async (req, res) => {
     const userJwt = jwt.sign({
       userEmail: payload.email,
       userName: payload.name,
+      userPicture: payload.picture
     }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     res.cookie('token', userJwt, {
