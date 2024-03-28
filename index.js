@@ -199,6 +199,30 @@ app.post('/api/user/favorites', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/user/favorites', authenticateToken, async (req, res) => {
+    const userEmail = req.user.userEmail;
+    console.log("Hi")
+    try {
+        const usersCollection = mongoclient.db("Uniswap").collection("Users");
+
+        // Find the user by email and only return the favouriteItems field
+        const user = await usersCollection.findOne({ userEmail });
+
+        if (!user) {
+            // If no user is found, respond accordingly
+            return res.status(404).json({ message: "User not found" });
+        }
+        console.log(user.favouriteItems)
+        // Respond with the favouriteItems array or an empty array if none exists
+        res.json(user.favouriteItems || []);
+    } catch (error) {
+        console.error("Error retrieving user's favorite items:", error);
+        res.status(500).json({ message: "Failed to retrieve favorite items" });
+    }
+});
+
+
+
 
 
 
