@@ -66,36 +66,55 @@ const client = new OAuth2Client(CLIENT_ID);
 app.post('/api/auth/google', async (req, res) => {
   const { token } = req.body;
   try {
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    const userJwt = jwt.sign({
-      userEmail: payload.email,
-      userName: payload.name,
-      userPicture: payload.picture
-    }, process.env.JWT_SECRET, { expiresIn: '1d' });
+      const ticket = await client.verifyIdToken({
+          idToken: token,
+          audience: CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
 
-        res.cookie('token', userJwt, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'None',
-        });
+      // Check if the user already exists in the database
+      const usersCollection = mongoclient.db("Uniswap").collection("Users");
+      let user = await usersCollection.findOne({ userEmail: payload.email });
 
-        res.status(200).json({
-            message: 'Authentication successful',
-            user: {
-                userEmail: payload.email,
-                userName: payload.name,
-                userPicture: payload.picture,
-            },
-        });
-    } catch (error) {
-        console.error('Error verifying Google token:', error);
-        res.status(401).send('Invalid authentication token');
-    }
+      if (!user) {
+          // If the user doesn't exist, create a new user entry
+          user = {
+              userName: payload.name,
+              userEmail: payload.email,
+              userPicture: payload.picture,
+              favouriteItems: [], // Assuming you're tracking favorite items
+              itemsPosted: [] // Assuming you're tracking items posted by the user
+          };
+          await usersCollection.insertOne(user);
+      }
+
+      // Regardless of new or existing user, sign a JWT for them
+      const userJwt = jwt.sign({
+          userEmail: user.userEmail,
+          userName: user.userName,
+          userPicture: user.userPicture
+      }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+      res.cookie('token', userJwt, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'None',
+      });
+
+      res.status(200).json({
+          message: 'Authentication successful',
+          user: {
+              userEmail: user.userEmail,
+              userName: user.userName,
+              userPicture: user.userPicture,
+          },
+      });
+  } catch (error) {
+      console.error('Error verifying Google token or interacting with the database:', error);
+      res.status(401).send('Invalid authentication token');
+  }
 });
+
 
 app.post('/api/auth/logout', (req, res) => {
     res.clearCookie('token');
@@ -103,31 +122,78 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.post('/api/items', authenticateToken, async (req, res) => {
-    const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
+  const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
 
-    try {
-        const collection = mongoclient.db("Uniswap").collection("Items");
-        const item = {
-            userName: req.user.userName,
-            userEmail: req.user.userEmail,
-            userPicture: req.user.userPicture,
-            itemName,
-            itemDescription,
-            itemPrice,
-            itemCategory,
-            itemPicture,
-            contactNumber,
-            live,
-            dateAdded: new Date(),
-        };
+  try {
+      const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+      const item = {
+          userName: req.user.userName,
+          userEmail: req.user.userEmail,
+          userPicture: req.user.userPicture,
+          itemName,
+          itemDescription,
+          itemPrice,
+          itemCategory,
+          itemPicture,
+          contactNumber,
+          live,
+          dateAdded: new Date(),
+      };
 
-        await collection.insertOne(item);
-        res.status(201).json({ message: "Item successfully posted", item });
-    } catch (error) {
-        console.error("Error adding item to DB:", error);
-        res.status(500).json({ message: "Failed to post item" });
-    }
+      const result = await itemsCollection.insertOne(item);
+
+      // Assuming the item ID is needed to link with the user
+      const itemId = result.insertedId;
+
+      // Update the user's document to reference the new item
+      const usersCollection = mongoclient.db("Uniswap").collection("Users");
+      await usersCollection.updateOne(
+          { userEmail: req.user.userEmail },
+          { $push: { itemsPosted: itemId } } // Adds the item ID to the itemsPosted array
+      );
+
+      res.status(201).json({ message: "Item successfully posted", item });
+  } catch (error) {
+      console.error("Error adding item to DB or updating user document:", error);
+      res.status(500).json({ message: "Failed to post item" });
+  }
 });
+
+
+app.get('/api/user/items', authenticateToken, async (req, res) => {
+  try {
+      const userEmail = req.user.userEmail;
+      const collection = mongoclient.db("Uniswap").collection("Items");
+      const itemsPostedByUser = await collection.find({ userEmail }).toArray();
+      
+      res.status(200).json(itemsPostedByUser);
+  } catch (error) {
+      console.error("Error fetching items posted by the user:", error);
+      res.status(500).json({ message: "Failed to fetch items posted by the user" });
+  }
+});
+
+app.get('/api/user/favorites', authenticateToken, async (req, res) => {
+  try {
+      const userEmail = req.user.userEmail;
+      const favoritesCollection = mongoclient.db("Uniswap").collection("Favorites");
+      const favoriteItemsIds = await favoritesCollection.find({ userEmail }).toArray(); // This might return IDs or full items based on your schema
+      
+      const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+      const favoriteItems = [];
+      for (const item of favoriteItemsIds) {
+          const itemDetail = await itemsCollection.findOne({ _id: item.itemId });
+          favoriteItems.push(itemDetail);
+      }
+      
+      res.status(200).json(favoriteItems);
+  } catch (error) {
+      console.error("Error fetching user's favorite items:", error);
+      res.status(500).json({ message: "Failed to fetch user's favorite items" });
+  }
+});
+
+
 
 app.get('/items', async (req, res) => {
     try {
