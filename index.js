@@ -10,7 +10,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
 import admin from 'firebase-admin';
-import serviceAccount from "./firebase-credentials.json"; 
+import serviceAccount from "./firebase-credentials.json" assert { type: 'json' }; 
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
