@@ -212,7 +212,6 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 app.post('/api/user/token', authenticateToken, async (req, res) => {
     const { token: fcmToken } = req.body;
     const userEmail = req.user.userEmail;
-    console.log("hi there")
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         await usersCollection.updateOne(
