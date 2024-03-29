@@ -153,6 +153,65 @@ app.post('/api/auth/logout', (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
 });
 
+// Endpoint to toggle the live status of an item
+app.patch('/api/items/:itemId/live', authenticateToken, async (req, res) => {
+    const { itemId } = req.params; // Get the item ID from the request URL
+    const userEmail = req.user.userEmail; // Get the user's email from the authenticated user object
+
+    try {
+        const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+
+        // Verify that the item belongs to the authenticated user
+        const item = await itemsCollection.findOne({ _id: new ObjectId(itemId), userEmail });
+        if (!item) {
+            // If the item is not found or does not belong to the user, return an error
+            return res.status(404).json({ message: "Item not found or you don't have permission to update this item" });
+        }
+
+        // Toggle the live status
+        const newLiveStatus = item.live === "y" ? "n" : "y";
+
+        // Perform the update operation
+        await itemsCollection.updateOne({ _id: new ObjectId(itemId) }, { $set: { live: newLiveStatus } });
+
+        res.status(200).json({ message: "Item live status updated successfully", live: newLiveStatus });
+    } catch (error) {
+        console.error("Error updating live status of the item:", error);
+        res.status(500).json({ message: "Failed to update live status of the item" });
+    }
+});
+
+// ...
+
+// Endpoint to delete an item
+app.delete('/api/items/:itemId', authenticateToken, async (req, res) => {
+    const { itemId } = req.params; // Get the item ID from the request URL
+    const userEmail = req.user.userEmail; // Get the user's email from the authenticated user object
+
+    try {
+        const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+
+        // Verify that the item belongs to the authenticated user
+        const item = await itemsCollection.findOne({ _id: new ObjectId(itemId), userEmail });
+        if (!item) {
+            // If the item is not found or does not belong to the user, return an error
+            return res.status(404).json({ message: "Item not found or you don't have permission to delete this item" });
+        }
+
+        // Delete the item
+        await itemsCollection.deleteOne({ _id: new ObjectId(itemId) });
+
+        res.status(200).json({ message: "Item deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting the item:", error);
+        res.status(500).json({ message: "Failed to delete the item" });
+    }
+});
+
+// ...
+
+
+
 app.post('/api/items', authenticateToken, async (req, res) => {
     const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
 
