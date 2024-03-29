@@ -10,7 +10,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
 import admin from 'firebase-admin';
-import serviceAccount from "./firebase-credentials.json"; 
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const serviceAccount = JSON.parse(fs.readFileSync(join(__dirname, 'firebase-credentials.json'), 'utf8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -166,27 +173,23 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         };
 
         const result = await itemsCollection.insertOne(item);
-
-        // Assuming the item ID is needed to link with the user
         const itemId = result.insertedId;
-
-        // Update the user's document to reference the new item
+        
+        // Fetch all user tokens
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        await usersCollection.updateOne(
-            { userEmail: req.user.userEmail },
-            { $push: { itemsPosted: itemId } } // Adds the item ID to the itemsPosted array
-        );
+        const users = await usersCollection.find({}).project({ fcmToken: 1 }).toArray();
+        
+        const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
-        // Now send a push notification
         const message = {
             notification: {
                 title: 'New Item Posted',
                 body: `${itemName} is now available!`
             },
-            token: req.user.fcmToken // assuming you've stored the FCM token in your user document
+            tokens: tokens,
         };
 
-        admin.messaging().send(message)
+        admin.messaging().sendMulticast(message)
             .then((response) => {
                 console.log('Successfully sent message:', response);
             })
@@ -194,10 +197,15 @@ app.post('/api/items', authenticateToken, async (req, res) => {
                 console.log('Error sending message:', error);
             });
 
+        await usersCollection.updateOne(
+            { userEmail: req.user.userEmail },
+            { $push: { itemsPosted: itemId } }
+        );
+
         res.status(201).json({ message: "Item successfully posted", item });
     } catch (error) {
-        console.error("Error adding item to DB or updating user document:", error);
-        res.status(500).json({ message: "Failed to post item" });
+        console.error("Error adding item to DB or sending notification:", error);
+        res.status(500).json({ message: "Failed to post item or send notification" });
     }
 });
 
