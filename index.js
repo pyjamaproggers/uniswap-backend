@@ -31,7 +31,7 @@ const port = 8080;
 
 app.use(express.json());
 app.use(cors({
-    origin: 'https://localhost:3000', // Adjust according to your frontend setup
+    origin: 'https://uniswapashoka.netlify.app', // Adjust according to your frontend setup
     credentials: true,
 }));
 app.use(cookieParser());
