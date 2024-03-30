@@ -97,7 +97,8 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
 
 app.post('/api/auth/google', async (req, res) => {
-    const { token, contactNumber } = req.body;
+    const token = req.body.token;
+    const phone = req.body.contactNumber
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -109,7 +110,8 @@ app.post('/api/auth/google', async (req, res) => {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         let user = await usersCollection.findOne({ userEmail: payload.email });
         if (!user) {
-            console.log(contactNumber)
+            console.log(token)
+            console.log(phone)
             // If the user doesn't exist, create a new user entry
             user = {
                 userName: payload.name,
@@ -117,7 +119,7 @@ app.post('/api/auth/google', async (req, res) => {
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber
+                contactNumber: phone
             };
             await usersCollection.insertOne(user);
         }
