@@ -405,6 +405,47 @@ app.get('/items', async (req, res) => {
     }
 });
 
+app.patch('/api/user/updatePhoneNumber', authenticateToken, async (req, res) => {
+    const { newPhoneNumber } = req.body;
+    const userEmail = req.user.userEmail;
+
+    if (!newPhoneNumber) {
+        return res.status(400).json({ message: "New phone number is required" });
+    }
+
+    const usersCollection = mongoclient.db("Uniswap").collection("Users");
+    const itemsCollection = mongoclient.db("Uniswap").collection("Items");
+
+    try {
+        await usersCollection.updateOne({ userEmail }, { $set: { contactNumber: newPhoneNumber }});
+
+        const updateItemsResult = await itemsCollection.updateMany(
+            { userEmail },
+            { $set: { contactNumber: newPhoneNumber }}
+        );
+
+        const updatedJwt = jwt.sign({
+            userEmail: userEmail,
+            contactNumber: newPhoneNumber
+        }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.cookie('token', updatedJwt, {
+            httpOnly: true,
+            secure: true, // Set to true if using https
+            sameSite: 'None', // Adjust according to your requirements
+        });
+
+        res.json({
+            message: "Phone number updated successfully",
+            updatedItemsCount: updateItemsResult.modifiedCount,
+        });
+    } catch (error) {
+        console.error('Error updating phone number:', error);
+        res.status(500).json({ message: "Failed to update phone number" });
+    }
+});
+
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
