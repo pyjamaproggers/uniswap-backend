@@ -185,6 +185,16 @@ app.patch('/api/items/:itemId/live', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/user/checkLogin', authenticateToken, (req, res) => {
+    // The authenticateToken middleware will set req.user if the token is valid
+    if (req.user) {
+        res.json({ user: req.user });
+    } else {
+        res.json({ user: null });
+    }
+});
+
+
 // ...
 
 // Endpoint to delete an item
