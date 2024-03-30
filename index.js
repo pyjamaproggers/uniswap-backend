@@ -98,6 +98,7 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
 app.post('/api/auth/google', async (req, res) => {
     const { token, contactNumber } = req.body;
+    console.log(req.body)
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
