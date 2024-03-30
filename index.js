@@ -13,6 +13,7 @@ import admin from 'firebase-admin';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { Console } from 'console';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -107,7 +108,6 @@ app.post('/api/auth/google', async (req, res) => {
         // Check if the user already exists in the database
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         let user = await usersCollection.findOne({ userEmail: payload.email });
-
         if (!user) {
             // If the user doesn't exist, create a new user entry
             user = {
@@ -116,7 +116,7 @@ app.post('/api/auth/google', async (req, res) => {
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber
+                contactNumber: contactNumber
             };
             await usersCollection.insertOne(user);
         }
