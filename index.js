@@ -31,7 +31,7 @@ const port = 8080;
 
 app.use(express.json());
 app.use(cors({
-    origin: 'https://main--uniswapashoka.netlify.app/', 
+    origin: 'https://localhost:3000', 
     credentials: true,
 }));
 app.use(cookieParser());
@@ -404,6 +404,68 @@ app.get('/items', async (req, res) => {
         res.status(500).json(error);
     }
 });
+
+// Endpoint to register a new user or update an existing user's phone number
+app.post('/api/user/registerOrUpdate', async (req, res) => {
+    const { token, contactNumber } = req.body; // Assume token is the Google token and contactNumber is the phone number to update
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+
+        // Check if the user already exists
+        const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        let user = await usersCollection.findOne({ userEmail: payload.email });
+
+        if (user) {
+            // User exists, update phone number
+            await usersCollection.updateOne({ userEmail: payload.email }, { $set: { contactNumber: contactNumber } });
+        } else {
+            // New user, insert new document
+            user = {
+                userName: payload.name,
+                userEmail: payload.email,
+                userPicture: payload.picture,
+                contactNumber: contactNumber,
+                favouriteItems: [],
+                itemsPosted: [],
+            };
+            await usersCollection.insertOne(user);
+        }
+
+        // Sign JWT with updated information
+        const userJwt = jwt.sign({
+            userEmail: payload.email,
+            userName: payload.name,
+            userPicture: payload.picture,
+            contactNumber: contactNumber,
+        }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        // Set the JWT in a cookie
+        res.cookie('token', userJwt, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+        });
+
+        res.status(200).json({
+            message: 'User registered/updated successfully',
+            user: {
+                userEmail: payload.email,
+                userName: payload.name,
+                userPicture: payload.picture,
+                contactNumber: contactNumber,
+            },
+        });
+    } catch (error) {
+        console.error('Error processing request:', error);
+        res.status(500).json({ message: "Failed to register/update user" });
+    }
+});
+
 
 app.patch('/api/user/updatePhoneNumber', authenticateToken, async (req, res) => {
     const { newPhoneNumber } = req.body;
