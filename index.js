@@ -96,7 +96,7 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
 
 app.post('/api/auth/google', async (req, res) => {
-    const { token } = req.body;
+    const { token, contactNumber } = req.body;
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -115,7 +115,8 @@ app.post('/api/auth/google', async (req, res) => {
                 userEmail: payload.email,
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
-                itemsPosted: [] // Assuming you're tracking items posted by the user
+                itemsPosted: [], // Assuming you're tracking items posted by the user
+                contactNumber
             };
             await usersCollection.insertOne(user);
         }
@@ -124,7 +125,8 @@ app.post('/api/auth/google', async (req, res) => {
         const userJwt = jwt.sign({
             userEmail: user.userEmail,
             userName: user.userName,
-            userPicture: user.userPicture
+            userPicture: user.userPicture,
+            contactNumber
         }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('token', userJwt, {
@@ -139,11 +141,13 @@ app.post('/api/auth/google', async (req, res) => {
                 userEmail: user.userEmail,
                 userName: user.userName,
                 userPicture: user.userPicture,
+                contactNumber
             },
         });
     } catch (error) {
         console.error('Error verifying Google token or interacting with the database:', error);
-        res.status(401).send('Invalid authentication token');
+        // res.status(401).send('Invalid authentication token');
+        res.send(error)
     }
 });
 
