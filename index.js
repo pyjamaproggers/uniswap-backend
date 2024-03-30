@@ -31,7 +31,7 @@ const port = 8080;
 
 app.use(express.json());
 app.use(cors({
-    origin: 'https://uniswapashoka.netlify.app', // Adjust according to your frontend setup
+    origin: 'https://main--uniswapashoka.netlify.app/', 
     credentials: true,
 }));
 app.use(cookieParser());
