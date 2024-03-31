@@ -31,9 +31,10 @@ const port = 8080;
 
 app.use(express.json());
 app.use(cors({
-    origin: 'https://main--uniswapashoka.netlify.app', 
+    origin: ['https://main--uniswapashoka.netlify.app', 'https://localhost:3000', 'https://uniswapashoka.netlify.app'],
     credentials: true,
 }));
+
 app.use(cookieParser());
 
 // Middleware for authenticating tokens
