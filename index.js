@@ -386,6 +386,7 @@ app.patch('/api/items/:itemId', authenticateToken, async (req, res) => {
             ...(itemPicture && { itemPicture }),
             ...(contactNumber && { contactNumber }),
             ...(live && { live }),
+            dateAdded: new Date(),
         };
 
         await itemsCollection.updateOne({ _id: new ObjectId(itemId) }, { $set: updatedItem });
