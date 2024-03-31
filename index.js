@@ -98,7 +98,6 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
 app.post('/api/auth/google', async (req, res) => {
     const token = req.body.token;
-    const phone = req.body.contactNumber
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -110,8 +109,6 @@ app.post('/api/auth/google', async (req, res) => {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         let user = await usersCollection.findOne({ userEmail: payload.email });
         if (!user) {
-            console.log(token)
-            console.log(phone)
             // If the user doesn't exist, create a new user entry
             user = {
                 userName: payload.name,
@@ -119,7 +116,7 @@ app.post('/api/auth/google', async (req, res) => {
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber: phone
+                contactNumber: null
             };
             await usersCollection.insertOne(user);
         }
@@ -129,7 +126,6 @@ app.post('/api/auth/google', async (req, res) => {
             userEmail: user.userEmail,
             userName: user.userName,
             userPicture: user.userPicture,
-            contactNumber: user.contactNumber
         }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('token', userJwt, {
@@ -139,12 +135,11 @@ app.post('/api/auth/google', async (req, res) => {
         });
 
         res.status(200).json({
-            message: 'Authentication successful',
+            message: 'Google Authentication successful',
             user: {
                 userEmail: user.userEmail,
                 userName: user.userName,
                 userPicture: user.userPicture,
-                contactNumber: user.contactNumber
             },
         });
     } catch (error) {
