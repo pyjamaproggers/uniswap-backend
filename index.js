@@ -261,7 +261,7 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         const message = {
             notification: {
                 title: 'New item for sale!',
-                body: `${userName.split(" ")[0]} just posted a ${itemName} for sale!`
+                body: `${req.user.userName} just posted a ${itemName} for sale!`
             },
             tokens: tokens, // This should be an array of tokens
         };
