@@ -116,7 +116,8 @@ app.post('/api/auth/google', async (req, res) => {
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber
+                contactNumber,
+                fcmTokens: []
             };
             await usersCollection.insertOne(user);
         }
@@ -285,18 +286,20 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 app.post('/api/user/token', authenticateToken, async (req, res) => {
     const { token: fcmToken } = req.body;
     const userEmail = req.user.userEmail;
+
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         await usersCollection.updateOne(
             { userEmail },
-            { $set: { fcmToken } }
+            { $push: { fcmTokens: fcmToken } } // $push will add the token to the array 'fcmTokens'
         );
-        res.status(200).json({ message: "FCM token updated successfully" });
+        res.status(200).json({ message: "FCM token added to array successfully" });
     } catch (error) {
-        console.error("Error updating FCM token:", error);
-        res.status(500).json({ message: "Failed to update FCM token" });
+        console.error("Error adding FCM token to array:", error);
+        res.status(500).json({ message: "Failed to add FCM token to array" });
     }
 });
+
 
 
 
