@@ -31,9 +31,10 @@ const port = 8080;
 
 app.use(express.json());
 app.use(cors({
-    origin: 'https://localhost:3000', 
+    origin: ['https://main--uniswapashoka.netlify.app', 'https://localhost:3000', 'https://uniswapashoka.netlify.app'],
     credentials: true,
 }));
+
 app.use(cookieParser());
 
 // Middleware for authenticating tokens
@@ -97,7 +98,7 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
 
 app.post('/api/auth/google', async (req, res) => {
-    const token = req.body.token;
+    const { token, contactNumber } = req.body;
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -109,14 +110,13 @@ app.post('/api/auth/google', async (req, res) => {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         let user = await usersCollection.findOne({ userEmail: payload.email });
         if (!user) {
-            // If the user doesn't exist, create a new user entry
             user = {
                 userName: payload.name,
                 userEmail: payload.email,
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber: null
+                contactNumber
             };
             await usersCollection.insertOne(user);
         }
@@ -385,6 +385,7 @@ app.patch('/api/items/:itemId', authenticateToken, async (req, res) => {
             ...(itemPicture && { itemPicture }),
             ...(contactNumber && { contactNumber }),
             ...(live && { live }),
+            dateAdded: new Date(),
         };
 
         await itemsCollection.updateOne({ _id: new ObjectId(itemId) }, { $set: updatedItem });
@@ -514,6 +515,47 @@ app.patch('/api/user/updatePhoneNumber', authenticateToken, async (req, res) => 
         res.status(500).json({ message: "Failed to update phone number" });
     }
 });
+
+
+app.get('/api/auth/verify', authenticateToken, async (req, res) => {
+    try {
+
+        const userEmail = req.user.userEmail;
+        const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        const user = await usersCollection.findOne({ userEmail });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const userJwt = jwt.sign({
+            userEmail: user.userEmail,
+            userName: user.userName,
+            userPicture: user.userPicture,
+            contactNumber: user.contactNumber // Include additional user information here.
+        }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.cookie('token', userJwt, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+        });
+
+        res.status(200).json({
+            message: 'User verified successfully',
+            user: {
+                userEmail: user.userEmail,
+                userName: user.userName,
+                userPicture: user.userPicture,
+                contactNumber: user.contactNumber
+            },
+        });
+    } catch (error) {
+        console.error('Error verifying user:', error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 
 
 app.listen(port, () => {
