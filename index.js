@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Console } from 'console';
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -254,21 +255,31 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         
         const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
-        const message = {
-            notification: {
-                title: 'New Item on Sale!',
-                body: `${req.user.userName}'s just posted a ${itemName} for sale!`,
-                imageUrl: itemPicture
-            },
-            tokens: tokens,
-        };
+        // const message = {
+        //     notification: {
+        //         title: 'New Item on Sale!',
+        //         body: `${req.user.userName}'s just posted a ${itemName} for sale!`,
+        //         imageUrl: itemPicture
+        //     },
+        //     tokens: tokens,
+        // };
 
-        admin.messaging().sendEachForMulticast(message)
+        // admin.messaging().sendEachForMulticast(message)
+        //     .then((response) => {
+        //         console.log('Successfully sent message:', response);
+        //     })
+        //     .catch((error) => {
+        //         console.log('Error sending message:', error);
+        //     });
+
+        const message = {
+            data: {score: '850', time: '2:45'},
+            tokens: registrationTokens,
+          };
+          
+          admin.getMessaging().sendMulticast(message)
             .then((response) => {
-                console.log('Successfully sent message:', response);
-            })
-            .catch((error) => {
-                console.log('Error sending message:', error);
+              console.log(response.successCount + ' messages were sent successfully');
             });
 
         await usersCollection.updateOne(
