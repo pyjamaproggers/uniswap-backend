@@ -117,7 +117,7 @@ app.post('/api/auth/google', async (req, res) => {
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
                 contactNumber,
-                fcmToken: []
+                fcmTokens: []
             };
             await usersCollection.insertOne(user);
         }
