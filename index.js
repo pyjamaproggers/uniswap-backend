@@ -258,7 +258,7 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 
         if (tokens.length > 0) {
             const message = {
-                notification: {
+                data: {
                     title: 'New item for sale!',
                     body: `${req.user.userName} just posted a ${itemName} for sale!`
                 },
