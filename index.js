@@ -294,16 +294,25 @@ app.post('/api/user/token', authenticateToken, async (req, res) => {
 
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        await usersCollection.updateOne(
-            { userEmail },
-            { $push: { fcmTokens: fcmToken } } // $push will add the token to the array 'fcmTokens'
-        );
-        res.status(200).json({ message: "FCM token added to array successfully" });
+        const user = await usersCollection.findOne({ userEmail });
+
+        // If the fcmToken is not already in the user's fcmTokens array, add it
+        if (user && !user.fcmTokens.includes(fcmToken)) {
+            await usersCollection.updateOne(
+                { userEmail },
+                { $push: { fcmTokens: fcmToken } }
+            );
+            res.status(200).json({ message: "FCM token added successfully" });
+        } else {
+            // Token is already in the array, or user not found
+            res.status(409).json({ message: "FCM token already exists or user not found" });
+        }
     } catch (error) {
-        console.error("Error adding FCM token to array:", error);
-        res.status(500).json({ message: "Failed to add FCM token to array" });
+        console.error("Error adding FCM token:", error);
+        res.status(500).json({ message: "Failed to add FCM token" });
     }
 });
+
 
 
 
