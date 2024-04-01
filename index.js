@@ -226,15 +226,13 @@ app.delete('/api/items/:itemId', authenticateToken, async (req, res) => {
 // ...
 
 
-
 app.post('/api/items', authenticateToken, async (req, res) => {
     const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
-    const userName = req.user.userName;
 
     try {
         const itemsCollection = mongoclient.db("Uniswap").collection("Items");
         const item = {
-            userName: userName,
+            userName: req.user.userName,
             userEmail: req.user.userEmail,
             userPicture: req.user.userPicture,
             itemName,
@@ -252,29 +250,30 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         
         // Fetch all user tokens
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        // Adjust the projection to the correct field name 'fcmTokens'
         const users = await usersCollection.find({}).project({ fcmTokens: 1 }).toArray();
         
-        // Flatten the fcmTokens arrays into a single array
-        const tokens = users.reduce((acc, user) => acc.concat(user.fcmTokens || []), []);
+        // Flatten the fcmTokens arrays into a single array and filter out undefined tokens
+        const tokens = users.reduce((acc, user) => acc.concat(user.fcmTokens || []), []).filter(t => t);
+        console.log("Sending notifications to tokens:", tokens); // This will log the tokens array
 
-        const message = {
-            notification: {
-                title: 'New item for sale!',
-                body: `${req.user.userName} just posted a ${itemName} for sale!`
-            },
-            tokens: tokens, // This should be an array of tokens
-        };
+        if (tokens.length > 0) {
+            const message = {
+                notification: {
+                    title: 'New item for sale!',
+                    body: `${req.user.userName} just posted a ${itemName} for sale!`
+                },
+                tokens: tokens,
+            };
 
-        admin.messaging().sendMulticast(message)
-            .then((response) => {
-                console.log('Successfully sent message:', response);
-            })
-            .catch((error) => {
-                console.log('Error sending message:', error);
-            });
+            admin.messaging().sendMulticast(message)
+                .then((response) => {
+                    console.log('Successfully sent message:', response);
+                })
+                .catch((error) => {
+                    console.error('Error sending message:', error);
+                });
+        }
 
-        // Push the itemId to the 'itemsPosted' array of the user who posted the item
         await usersCollection.updateOne(
             { userEmail: req.user.userEmail },
             { $push: { itemsPosted: itemId } }
