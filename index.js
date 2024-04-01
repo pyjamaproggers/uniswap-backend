@@ -116,8 +116,7 @@ app.post('/api/auth/google', async (req, res) => {
                 userPicture: payload.picture,
                 favouriteItems: [], // Assuming you're tracking favorite items
                 itemsPosted: [], // Assuming you're tracking items posted by the user
-                contactNumber,
-                fcmTokens: []
+                contactNumber
             };
             await usersCollection.insertOne(user);
         }
@@ -226,6 +225,7 @@ app.delete('/api/items/:itemId', authenticateToken, async (req, res) => {
 // ...
 
 
+
 app.post('/api/items', authenticateToken, async (req, res) => {
     const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
 
@@ -250,29 +250,25 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         
         // Fetch all user tokens
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        const users = await usersCollection.find({}).project({ fcmTokens: 1 }).toArray();
+        const users = await usersCollection.find({}).project({ fcmToken: 1 }).toArray();
         
-        // Flatten the fcmTokens arrays into a single array and filter out undefined tokens
-        const tokens = users.reduce((acc, user) => acc.concat(user.fcmTokens || []), []).filter(t => t);
-        console.log("Sending notifications to tokens:", tokens); // This will log the tokens array
+        const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
-        if (tokens.length > 0) {
-            const message = {
-                notification: {
-                    title: 'New item for sale!',
-                    body: `${req.user.userName} just posted a ${itemName} for sale!`
-                },
-                tokens: tokens,
-            };
+        const message = {
+            notification: {
+                title: 'What you were looking for?',
+                body: `${userName.split(" ")[0]}'s just posted a ${itemName} for sale!`
+            },
+            tokens: tokens,
+        };
 
-            admin.messaging().sendEachForMulticast(message)
-                .then((response) => {
-                    console.log('Successfully sent message:', response);
-                })
-                .catch((error) => {
-                    console.error('Error sending message:', error);
-                });
-        }
+        admin.messaging().sendMulticast(message)
+            .then((response) => {
+                console.log('Successfully sent message:', response);
+            })
+            .catch((error) => {
+                console.log('Error sending message:', error);
+            });
 
         await usersCollection.updateOne(
             { userEmail: req.user.userEmail },
@@ -286,33 +282,21 @@ app.post('/api/items', authenticateToken, async (req, res) => {
     }
 });
 
-
 app.post('/api/user/token', authenticateToken, async (req, res) => {
     const { token: fcmToken } = req.body;
     const userEmail = req.user.userEmail;
-
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        const user = await usersCollection.findOne({ userEmail });
-
-        // If the fcmToken is not already in the user's fcmTokens array, add it
-        if (user && !user.fcmTokens.includes(fcmToken)) {
-            await usersCollection.updateOne(
-                { userEmail },
-                { $push: { fcmTokens: fcmToken } }
-            );
-            res.status(200).json({ message: "FCM token added successfully" });
-        } else {
-            // Token is already in the array, or user not found
-            res.status(409).json({ message: "FCM token already exists or user not found" });
-        }
+        await usersCollection.updateOne(
+            { userEmail },
+            { $set: { fcmToken } }
+        );
+        res.status(200).json({ message: "FCM token updated successfully" });
     } catch (error) {
-        console.error("Error adding FCM token:", error);
-        res.status(500).json({ message: "Failed to add FCM token" });
+        console.error("Error updating FCM token:", error);
+        res.status(500).json({ message: "Failed to update FCM token" });
     }
 });
-
-
 
 
 
