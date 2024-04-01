@@ -274,10 +274,10 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 
         const message = {
             data: {score: '850', time: '2:45'},
-            tokens: registrationTokens,
+            tokens: tokens,
           };
           
-          admin.getMessaging().sendMulticast(message)
+          admin.messaging().sendMulticast(message)
             .then((response) => {
               console.log(response.successCount + ' messages were sent successfully');
             });
