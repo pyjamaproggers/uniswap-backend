@@ -255,11 +255,10 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
         const message = {
-            data:{
-                title:"New Item on Sale!",
-                options:{
-                    body:`${req.user.userName}'s just posted a ${itemName} for sale!`
-                }
+            notification: {
+                title: 'New Item on Sale!',
+                body: `${req.user.userName}'s just posted a ${itemName} for sale!`,
+                imageUrl: itemPicture
             },
             tokens: tokens,
         };
