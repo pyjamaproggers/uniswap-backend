@@ -252,11 +252,11 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         
         // Fetch all user tokens
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
-        // Assuming each user document has an 'fcmtokens' array
-        const users = await usersCollection.find({}).project({ fcmtokens: 1 }).toArray();
+        // Assuming each user document has an 'fcmtoken' array
+        const users = await usersCollection.find({}).project({ fcmtoken: 1 }).toArray();
         
         // Flatten all user tokens into a single array
-        const tokens = users.reduce((acc, user) => acc.concat(user.fcmtokens || []), []);
+        const tokens = users.reduce((acc, user) => acc.concat(user.fcmtoken || []), []);
 
         const message = {
             notification: {
@@ -296,7 +296,7 @@ app.post('/api/user/token', authenticateToken, async (req, res) => {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         await usersCollection.updateOne(
             { userEmail },
-            { $push: { fcmtokens: fcmToken } } // $push will add the token to the array 'fcmtokens'
+            { $push: { fcmtoken: fcmToken } } // $push will add the token to the array 'fcmtoken'
         );
         res.status(200).json({ message: "FCM token added to array successfully" });
     } catch (error) {
