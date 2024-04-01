@@ -260,7 +260,9 @@ app.post('/api/items', authenticateToken, async (req, res) => {
             const message = {
                 notification: {
                     title: 'New item for sale!',
-                    body: `${req.user.userName} just posted a ${itemName} for sale!`
+                    // body: `${req.user.userName} just posted a ${itemName} for sale!`
+                    body: `New just posted a for sale!`
+
                 },
                 tokens: tokens,
             };
