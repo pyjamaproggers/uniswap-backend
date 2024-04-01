@@ -258,14 +258,14 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 
         if (tokens.length > 0) {
             const message = {
-                data: {
+                notification: {
                     title: 'New item for sale!',
                     body: `${req.user.userName} just posted a ${itemName} for sale!`
                 },
                 tokens: tokens,
             };
 
-            admin.messaging().sendMulticast(message)
+            admin.messaging().sendEachForMulticast(message)
                 .then((response) => {
                     console.log('Successfully sent message:', response);
                 })
