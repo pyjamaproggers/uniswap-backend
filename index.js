@@ -279,9 +279,11 @@ app.post('/api/items', authenticateToken, async (req, res) => {
             tokens: tokens,
         };
 
+        
+
         admin.messaging().sendMulticast(message)
             .then((response) => {
-                console.log('Successfully sent message:', response);
+                console.log('Successfully sent message:', message);
             })
             .catch((error) => {
                 console.log('Error sending message:', error);
