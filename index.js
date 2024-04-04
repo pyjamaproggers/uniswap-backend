@@ -261,7 +261,7 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         //         body: `${req.user.userName}'s just posted a ${itemName} for sale!`,
         //         imageUrl: itemPicture
         //     },
-        //     tokens: tokens,
+        //p     tokens: tokens,
         // };
 
         // admin.messaging().sendEachForMulticast(message)
@@ -271,15 +271,20 @@ app.post('/api/items', authenticateToken, async (req, res) => {
         //     .catch((error) => {
         //         console.log('Error sending message:', error);
         //     });
-
         const message = {
-            data: {score: '850', time: '2:45'},
+            notification: {
+                title: 'New Item Posted',
+                body: `${itemName} is now available!`
+            },
             tokens: tokens,
-          };
-          
-          admin.messaging().sendMulticast(message)
+        };
+
+        admin.messaging().sendMulticast(message)
             .then((response) => {
-              console.log(response.successCount + ' messages were sent successfully');
+                console.log('Successfully sent message:', response);
+            })
+            .catch((error) => {
+                console.log('Error sending message:', error);
             });
 
         await usersCollection.updateOne(
