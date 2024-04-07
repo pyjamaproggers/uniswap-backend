@@ -142,7 +142,8 @@ app.post('/api/auth/google', async (req, res) => {
                 userEmail: user.userEmail,
                 userName: user.userName,
                 userPicture: user.userPicture,
-                contactNumber: user.contactNumber
+                contactNumber: user.contactNumber,
+                favouriteItems: user.favouriteItems
             },
         });
     } catch (error) {
