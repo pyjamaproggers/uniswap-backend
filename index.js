@@ -122,23 +122,6 @@ app.post('/api/auth/google', async (req, res) => {
             await usersCollection.insertOne(user);
         }
 
-        if (user) {
-            const hasFcmToken = Boolean(user.fcmToken);
-            // Sign JWT and set it in a cookie as before
-            // Include hasFcmToken in the response
-            res.status(200).json({
-                message: 'Google Authentication successful',
-                user: {
-                    userEmail: user.userEmail,
-                    userName: user.userName,
-                    userPicture: user.userPicture,
-                    contactNumber: user.contactNumber
-                },
-                hasFcmToken // Add this line
-            });
-        }
-
-
         // Regardless of new or existing user, sign a JWT for them
         const userJwt = jwt.sign({
             userEmail: user.userEmail,
