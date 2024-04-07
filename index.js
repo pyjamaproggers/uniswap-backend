@@ -578,6 +578,25 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/user/hasFcmToken', authenticateToken, async (req, res) => {
+    const userEmail = req.user.userEmail;
+
+    try {
+        const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        const user = await usersCollection.findOne({ userEmail }, { projection: { fcmToken: 1 } });
+
+        if (user && user.fcmToken) {
+            res.json({ hasFcmToken: true });
+        } else {
+            res.json({ hasFcmToken: false });
+        }
+    } catch (error) {
+        console.error("Error checking FCM token:", error);
+        res.status(500).json({ message: "Failed to check FCM token" });
+    }
+});
+
+
 
 
 app.listen(port, () => {
