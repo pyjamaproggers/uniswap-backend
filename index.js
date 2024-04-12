@@ -107,10 +107,13 @@ app.post('/api/auth/google', async (req, res) => {
         });
         const payload = ticket.getPayload();
 
+        let firstTime = false
+
         // Check if the user already exists in the database
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         let user = await usersCollection.findOne({ userEmail: payload.email });
         if (!user) {
+            firstTime = true
             user = {
                 userName: payload.name,
                 userEmail: payload.email,
@@ -143,7 +146,8 @@ app.post('/api/auth/google', async (req, res) => {
                 userName: user.userName,
                 userPicture: user.userPicture,
                 contactNumber: user.contactNumber,
-                favouriteItems: user.favouriteItems
+                favouriteItems: user.favouriteItems,
+                firstTime: firstTime
             },
         });
     } catch (error) {
