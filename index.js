@@ -22,7 +22,7 @@ const __dirname = dirname(__filename);
 const serviceAccount = JSON.parse(fs.readFileSync(join(__dirname, 'newcreds.json'), 'utf8'));
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(serviceAccount),
 });
 
 dotenv.config();
@@ -253,11 +253,11 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 
         const result = await itemsCollection.insertOne(item);
         const itemId = result.insertedId;
-        
+
         // Fetch all user tokens
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
         const users = await usersCollection.find({}).project({ fcmToken: 1 }).toArray();
-        
+
         const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
         // const message = {
@@ -284,7 +284,7 @@ app.post('/api/items', authenticateToken, async (req, res) => {
             tokens: tokens,
         };
 
-        
+
 
         admin.messaging().sendMulticast(message)
             .then((response) => {
@@ -329,7 +329,7 @@ app.get('/api/user/items', authenticateToken, async (req, res) => {
         const userEmail = req.user.userEmail;
         const collection = mongoclient.db("Uniswap").collection("Items");
         const itemsPostedByUser = await collection.find({ userEmail }).toArray();
-
+        itemsPostedByUser.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
         res.status(200).json(itemsPostedByUser);
     } catch (error) {
         console.error("Error fetching items posted by the user:", error);
@@ -367,16 +367,23 @@ app.get('/api/user/favorites', authenticateToken, async (req, res) => {
     const userEmail = req.user.userEmail;
     try {
         const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        const itemsCollection = mongoclient.db("Uniswap").collection("Items");
 
         // Find the user by email and only return the favouriteItems field
         const user = await usersCollection.findOne({ userEmail });
-
+        const favouriteItemsIDs = user.favouriteItems
+        const allItems = await itemsCollection.find().toArray();
+        // Deduplicate favouriteItemsIDs if necessary
+        const uniqueFavouriteItemIDs = [...new Set(favouriteItemsIDs)];
+        const favouriteItems = allItems.filter(item => uniqueFavouriteItemIDs.includes((item._id).toString()))
+        // console.log(favouriteItems)
+        
         if (!user) {
             // If no user is found, respond accordingly
             return res.status(404).json({ message: "User not found" });
         }
         // Respond with the favouriteItems array or an empty array if none exists
-        res.json(user.favouriteItems || []);
+        res.json(favouriteItems || []);
     } catch (error) {
         console.error("Error retrieving user's favorite items:", error);
         res.status(500).json({ message: "Failed to retrieve favorite items" });
@@ -427,6 +434,21 @@ app.patch('/api/items/:itemId', authenticateToken, async (req, res) => {
 
 
 app.get('/items', async (req, res) => {
+    try {
+        const cat = req.query.cat;
+        const collection = mongoclient.db("Uniswap").collection("Items");
+        const query = cat ? { cat } : {};
+
+        const data = await collection.find(query).toArray();
+        res.status(200).json(data);
+    } catch (error) {
+        console.error("Error executing query:", error);
+        res.status(500).json(error);
+    }
+});
+
+app.get('/favouriteItems', async (req, res) => {
+    console.log(req.params)
     try {
         const cat = req.query.cat;
         const collection = mongoclient.db("Uniswap").collection("Items");
@@ -514,11 +536,11 @@ app.patch('/api/user/updatePhoneNumber', authenticateToken, async (req, res) => 
     const itemsCollection = mongoclient.db("Uniswap").collection("Items");
 
     try {
-        await usersCollection.updateOne({ userEmail }, { $set: { contactNumber: newPhoneNumber }});
+        await usersCollection.updateOne({ userEmail }, { $set: { contactNumber: newPhoneNumber } });
 
         const updateItemsResult = await itemsCollection.updateMany(
             { userEmail },
-            { $set: { contactNumber: newPhoneNumber }}
+            { $set: { contactNumber: newPhoneNumber } }
         );
 
         const updatedJwt = jwt.sign({
