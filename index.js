@@ -131,7 +131,7 @@ app.post('/api/auth/google', async (req, res) => {
             userName: user.userName,
             userPicture: user.userPicture,
             contactNumber: user.contactNumber
-        }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
         res.cookie('token', userJwt, {
             httpOnly: true,
