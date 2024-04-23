@@ -228,7 +228,7 @@ app.delete('/api/items/:itemId', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/events', authenticateToken, async (req, res) => {
+app.post('/api/items', authenticateToken, async (req, res) => {
     const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
 
     try {
@@ -286,7 +286,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/items', authenticateToken, async (req, res) => {
+app.post('/api/events', authenticateToken, async (req, res) => {
     const { eventName, eventDescription, eventDate, eventTime, eventLocation, eventCategory, notifications, live } = req.body;
 
     try {
