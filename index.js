@@ -447,6 +447,20 @@ app.get('/items', async (req, res) => {
     }
 });
 
+app.get('/events', async (req, res) => {
+    try {
+        const cat = req.query.cat;
+        const collection = mongoclient.db("Uniswap").collection("Events");
+        const query = cat ? { cat } : {};
+
+        const data = await collection.find(query).toArray();
+        res.status(200).json(data);
+    } catch (error) {
+        console.error("Error executing query:", error);
+        res.status(500).json(error);
+    }
+});
+
 app.get('/favouriteItems', async (req, res) => {
     console.log(req.params)
     try {
