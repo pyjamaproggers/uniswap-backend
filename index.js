@@ -228,11 +228,7 @@ app.delete('/api/items/:itemId', authenticateToken, async (req, res) => {
     }
 });
 
-// ...
-
-
-
-app.post('/api/items', authenticateToken, async (req, res) => {
+app.post('/api/events', authenticateToken, async (req, res) => {
     const { itemName, itemDescription, itemPrice, itemCategory, itemPicture, contactNumber, live } = req.body;
 
     try {
@@ -260,22 +256,6 @@ app.post('/api/items', authenticateToken, async (req, res) => {
 
         const tokens = users.map(user => user.fcmToken).filter(token => token != null);
 
-        // const message = {
-        //     notification: {
-        //         title: 'New Item on Sale!',
-        //         body: `${req.user.userName}'s just posted a ${itemName} for sale!`,
-        //         imageUrl: itemPicture
-        //     },
-        //p     tokens: tokens,
-        // };
-
-        // admin.messaging().sendEachForMulticast(message)
-        //     .then((response) => {
-        //         console.log('Successfully sent message:', response);
-        //     })
-        //     .catch((error) => {
-        //         console.log('Error sending message:', error);
-        //     });
         const message = {
             notification: {
                 title: 'New Item Posted',
@@ -303,6 +283,65 @@ app.post('/api/items', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Error adding item to DB or sending notification:", error);
         res.status(500).json({ message: "Failed to post item or send notification" });
+    }
+});
+
+app.post('/api/items', authenticateToken, async (req, res) => {
+    const { eventName, eventDescription, eventDate, eventTime, eventLocation, eventCategory, notifications, live } = req.body;
+
+    try {
+        const eventsCollection = mongoclient.db("Uniswap").collection("Events");
+        const item = {
+            userName: req.user.userName,
+            userEmail: req.user.userEmail,
+            userPicture: req.user.userPicture,
+            eventName,
+            eventDescription,
+            eventDate,
+            eventTime,
+            eventLocation,
+            eventCategory,
+            notifications,
+            live,
+            dateAdded: new Date(),
+        };
+
+        const result = await eventsCollection.insertOne(item);
+        const eventId = result.insertedId;
+
+        // Fetch all user tokens
+        // const usersCollection = mongoclient.db("Uniswap").collection("Users");
+        // const users = await usersCollection.find({}).project({ fcmToken: 1 }).toArray();
+
+        // const tokens = users.map(user => user.fcmToken).filter(token => token != null);
+
+        // const message = {
+        //     notification: {
+        //         title: 'New Item Posted',
+        //         body: `${itemName} is now available!`
+        //     },
+        //     tokens: tokens,
+        // };
+
+
+
+        // admin.messaging().sendMulticast(message)
+        //     .then((response) => {
+        //         console.log('Successfully sent message:', message);
+        //     })
+        //     .catch((error) => {
+        //         console.log('Error sending message:', error);
+        //     });
+
+        await usersCollection.updateOne(
+            { userEmail: req.user.userEmail },
+            { $push: { itemsPosted: eventId } }
+        );
+
+        res.status(201).json({ message: "Event successfully posted", item });
+    } catch (error) {
+        console.error("Error adding event to DB:", error);
+        res.status(500).json({ message: "Failed to post event" });
     }
 });
 
