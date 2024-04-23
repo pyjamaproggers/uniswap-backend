@@ -14,6 +14,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Console } from 'console';
+import cron from "node-cron"
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -343,6 +344,58 @@ app.post('/api/events', authenticateToken, async (req, res) => {
         console.error("Error adding event to DB:", error);
         res.status(500).json({ message: "Failed to post event" });
     }
+});
+
+app.patch('/api/events/:eventId/notifications', authenticateToken, async (req, res) => {
+    const eventId = req.params.eventId;
+    const fcmToken = req.body.fcmToken;
+
+    if (!fcmToken) {
+        return res.status(400).json({ message: "FCM token is required" });
+    }
+
+    try {
+        const eventsCollection = mongoclient.db("Uniswap").collection("Events");
+        const result = await eventsCollection.updateOne(
+            { _id: new ObjectId(eventId) },
+            { $addToSet: { notifications: fcmToken } } // Using $addToSet to avoid duplicates
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        res.status(200).json({ message: "FCM token added successfully to event" });
+    } catch (error) {
+        console.error("Error updating event with FCM token:", error);
+        res.status(500).json({ message: "Failed to add FCM token to event" });
+    }
+});
+
+cron.schedule('* * * * *', async () => {
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+    const eventsCollection = mongoclient.db("Uniswap").collection("Events");
+    const upcomingEvents = await eventsCollection.find({
+        eventDate: { $gte: now, $lt: oneHourLater }
+    }).toArray();
+
+    upcomingEvents.forEach(event => {
+        if (event.notifications && event.notifications.length > 0) {
+            const message = {
+                notification: {
+                    title: 'Event Reminder',
+                    body: `Event "${event.eventName}" is starting soon!`
+                },
+                tokens: event.notifications,
+            };
+
+            admin.messaging().sendMulticast(message)
+                .then(response => console.log(event.eventName, ' is in one hour!'))
+                .catch(error => console.log('Error sending notification:', error));
+        }
+    });
 });
 
 app.post('/api/user/token', authenticateToken, async (req, res) => {
