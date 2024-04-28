@@ -2,10 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import authRoutes from './routes/authRoutes'; // Adjust path as necessary
-import itemRoutes from './routes/itemRoutes'; // Adjust path as necessary
-import eventRoutes from './routes/eventRoutes'; // Adjust path as necessary
-import userRoutes from './routes/userRoutes'; // Adjust path as necessary
+import authRoutes from './routes/authRoutes'; 
+import itemRoutes from './routes/itemRoutes'; 
+import eventRoutes from './routes/eventRoutes'; 
+import userRoutes from './routes/userRoutes'; 
 import cron from "node-cron";
 import admin from 'firebase-admin';
 import fs from 'fs';
